@@ -1,0 +1,395 @@
+---
+title: "Sensitive_privacy"
+author: "Yixi Li"
+date: "5/4/2019"
+output: html_document
+---
+```{r data, include=FALSE}
+library(lme4)
+#library(MASS)
+#library(MCMCglmm)
+#install.packages("ordinal")
+library(ordinal)
+#library(R2MLwiN)
+
+dir<-'/Users/Loielaine/Desktop/Good_Good_Study/2018Survey project/data/'
+
+data<-read.csv2(paste0(dir,"interviewee_interviewer_complete.csv"))
+
+#demo_r
+age<-as.numeric(as.character(data$age))
+#age<-scale(age,scale = F)
+gender<-data$gender_n
+data$ismarry<-0
+data[data$marital==2,"ismarry"]<-1
+marital<-data$ismarry
+edu<-data$educ_nc
+#nfamily<-data$nfamilya
+nfamily<-data$nfamily_c
+employ<-data$employment
+muni<-data$muni_c
+
+#demo_iwer
+language_iw<-data$language_iw
+nationality<-data$nationality_iw
+#age_iw<-as.numeric(as.character(data$age_iw))
+#age_iw<-scale(age_iw,scale = F)
+edu_iw<-data$edu_iw
+age_iw<-data$age_iwc
+exp_iw<-data$experience_iw_cate
+iw7a<-data$iw7a_cate
+iw7b<-data$iw7b_cate
+iw7b3<-data$iw7b_cate3
+#iw9a<-data$iw9a_cate
+iw9b<-data$iw9b_cate
+
+#personality
+#hexcao
+hexcao<-data.frame(matrix(nrow=1502,ncol=6))
+hexcao[,1]<-data$humility
+hexcao[,2]<-data$emotionality
+hexcao[,3]<-data$extraversion
+hexcao[,4]<-data$agreeableness
+hexcao[,5]<-data$conscientiousness
+hexcao[,6]<-data$openess  
+hexcao<-apply(hexcao,2,as.numeric) 
+hexcao<-scale(hexcao,scale=F)
+
+#SSI
+ssi<-data.frame(matrix(nrow=1502,ncol=6))
+ssi<-data[,627:632]
+ssi<-apply(ssi,2,as.numeric)
+ssi<-scale(ssi,scale=F)
+
+#iwid
+iwid<-as.character(data$iweraccount)
+
+#weights
+weights<-as.numeric(as.character(data$wgt))/sum(as.numeric(as.character(data$wgt)))*1502
+#weights<-scale(weights,center = F)
+
+strata<-data$strat
+
+#bidr
+bidr<-data$sum_orginal
+summary(factor(bidr))
+
+#family
+family_var<-c("friend_diff","no_companion","traditions","rltp_partents_categorical",
+                         "rltp_spouse_categorical","rltp_siblings_categorical",  "secret_spouse_categorical","secret_parent_categorical",
+                         "hh_hit_categorical","hh_insult","event_mixed")
+family_c<-data[,family_var]
+
+#present
+parent<-data$io1_parent
+spouse<-data$io1_spouse
+siblings<-data$io1_siblings
+children<-data$io1_children
+parentinlaw<-data$io1_parentinlaw
+present<-data$present
+
+modeldata<-data.frame(cbind(present,parent,spouse,siblings,children,parentinlaw,family_c,age,gender,edu,nfamily,employ,muni,marital,bidr,language_iw,nationality,age_iw,edu_iw,exp_iw,iw7b,iw7b3,iw9b,
+hexcao,ssi,iwid,weights,strata))
+colnames(modeldata)<-c("present","parent","spouse","siblings","children","parentinlaw","friend_diff","no_companion","traditions","rltp_partents","rltp_spouse","rltp_siblings",  "secret_spouse","secret_parent","hh_hit","hh_insult","event_mixed","age","gender","edu","nfamily","employ","muni", "marital","bidr", "language_iw","nationality","age_iw","edu_iw","exp_iw","iw7b","iw7b3","iw9b",
+"hexcao1","hexcao2","hexcao3","hexcao4","hexcao5","hexcao6",
+"ssi1","ssi2","ssi3","ssi4","ssi5","ssi6",
+"iwid","weights","strata")
+str(modeldata)
+
+for(i in c(7:45,47)){
+  modeldata[,i]<-as.numeric(as.character(modeldata[,i]))
+}
+
+write.csv2(modeldata,file=paste0(dir,"modeldata2.csv"),row.names =F)
+colnames(modeldata)
+
+```
+
+##friend_diff 1
+```{r friend_diff 1}
+m1_1<-clm(factor(friend_diff) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m1_1)
+
+```
+
+##friend_diff 2
+```{r friend_diff 2}
+m1_2<-clmm(factor(friend_diff) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m1_2)
+
+```
+
+
+##friend_diff 3
+```{r friend_diff 3}
+m1_3<-clmm(factor(friend_diff) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+ factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m1_3)
+
+```
+
+
+##no_companion 1
+```{r no_companion 1}
+m2_1<-clm(factor(no_companion) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m2_1)
+
+```
+
+##no_companion 2
+```{r no_companion 2}
+m2_2<-clmm(factor(no_companion) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m2_2)
+
+```
+
+
+##no_companion 3
+```{r no_companion 3}
+m2_3<-clmm(factor(no_companion) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+ factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m2_3)
+```
+
+
+##traditions 1
+```{r traditions 1}
+m3_1<-clm(factor(traditions) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m3_1)
+
+```
+
+##traditions 2
+```{r traditions 2}
+m3_2<-clmm(factor(traditions) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m3_2)
+
+```
+
+##traditions 3
+```{r traditions 3}
+m3_3<-clmm(factor(traditions) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+ factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m3_3)
+
+```
+
+
+##rlp_parents 1
+```{r rltp_partents 1}
+m4_1<-glm(factor(rltp_partents) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m4_1)
+```
+
+##rlp_parents 2
+```{r rltp_partents 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_partents)==F,]
+m4_2<-glmer(factor(subdata$rltp_partents) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m4_2)
+```
+
+
+##rlp_parents 3
+```{r rltp_partents 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_partents)==F,]
+m4_3<-glmer(factor(subdata$rltp_partents) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+
+              (1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m4_3)
+```
+
+
+##rlp_spouse 1
+```{r rltp_spouse 1}
+m5_1<-glm(factor(rltp_spouse) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m5_1)
+```
+
+##rltp_spouse 2
+```{r rltp_spouse 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_spouse)==F,]
+m5_2<-glmer(factor(subdata$rltp_spouse) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m5_2)
+```
+
+##rlp_spouse 3
+```{r rltp_spouse 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_spouse)==F,]
+m5_3<-glmer(factor(subdata$rltp_spouse) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+
+              (1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m5_3)
+```
+
+
+##rltp_siblings 1
+```{r rltp_siblings 1}
+m6_1<-glm(factor(rltp_siblings) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m6_1)
+```
+
+##rltp_siblings 2
+```{r rltp_siblings 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_siblings)==F,]
+m6_2<-glmer(factor(subdata$rltp_siblings) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m6_2)
+```
+
+##rltp_siblings 3
+```{r rltp_siblings 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$rltp_siblings)==F,]
+m6_3<-glmer(factor(subdata$rltp_siblings) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+
+              (1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m6_3)
+```
+
+
+##secret_spouse 1
+```{r secret_spouse 1}
+m7_1<-glm(factor(secret_spouse) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m7_1)
+```
+
+##secret_spouse 2
+```{r secret_spouse 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$secret_spouse)==F,]
+m7_2<-glmer(factor(subdata$secret_spouse) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m7_2)
+```
+
+##secret_spouse 3
+```{r secret_spouse 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$secret_spouse)==F,]
+m7_3<-glmer(factor(subdata$secret_spouse) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+
+              (1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m7_3)
+```
+
+
+##secret_parents 1
+```{r secret_parent 1}
+m8_1<-glm(factor(secret_parent) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m8_1)
+```
+
+##secret_parent 2
+```{r secret_parent 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$secret_parent)==F,]
+m8_2<-glmer(factor(subdata$secret_parent) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m8_2)
+```
+
+##secret_parent 3
+```{r secret_parent 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$secret_parent)==F,]
+m8_3<-glmer(factor(subdata$secret_parent) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m8_3)
+```
+
+##hh_hit
+```{r hh_hit 1}
+m9_1<-glm(factor(hh_hit) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),family = binomial, na.action=na.omit,weights = weights,data=modeldata)
+summary(m9_1)
+```
+
+##hh_hit 2
+```{r hh_hit 2}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$hh_hit)==F,]
+m9_2<-glmer(factor(subdata$hh_hit) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m9_2)
+```
+
+##hh_hit 3
+```{r hh_hit 3}
+#subdata<-modeldata[complete.cases(modeldata),]
+subdata<-modeldata[is.na(modeldata$hh_hit)==F,]
+m9_3<-glmer(factor(subdata$hh_hit) ~factor(subdata$parent)+factor(subdata$spouse)+factor(subdata$siblings)+factor(subdata$children)+factor(subdata$parentinlaw)+subdata$bidr+subdata$age+factor(subdata$gender)+factor(subdata$edu)+factor(subdata$nfamily)+factor(subdata$employ)+factor(subdata$muni)+factor(subdata$marital)+factor(subdata$language_iw) +factor(subdata$nationality)+factor(subdata$edu_iw)+factor(subdata$exp_iw)
++subdata$hexcao2+subdata$hexcao3 +subdata$hexcao5
+     +subdata$ssi1+subdata$ssi2+subdata$ssi5+subdata$ssi6+(1|factor(subdata$iwid)),family = binomial("logit"),weights = subdata$weights,data=subdata,control=glmerControl(calc.derivs = F))
+summary(m9_3)
+```
+
+##hh_insult 1
+```{r hh_insult 1}
+m10_1<-clm(factor(hh_insult) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m10_1)
+
+```
+
+##hh_insult 2
+```{r hh_insult 2}
+m10_2<-clmm(factor(hh_insult) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m10_2)
+
+```
+
+##hh_insult 3
+```{r hh_insult 3}
+m10_3<-clmm(factor(hh_insult) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m10_3)
+
+```
+
+
+##event_mixed 1
+```{r event_mixed 1}
+m11_1<-clm(factor(event_mixed) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m11_1)
+
+```
+
+##event_mixed 2
+```{r event_mixed 2}
+m11_2<-clmm(factor(event_mixed) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m11_2)
+
+```
+
+##event_mixed 3
+```{r event_mixed 3}
+m11_3<-clmm(factor(event_mixed) ~parent+spouse+siblings+children+parentinlaw+bidr+age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]+(1|factor(iwid)),Hess=T,link="logit", na.action=na.omit,  threshold = "flexible",weights = weights,data=modeldata,control =clmm.control(grtol=1e-6,innerCtrl = "noWarn",maxIter = 500,maxLineIter = 500))
+summary(m11_3)
+
+```
+
+
+```{r}
+anova(m1_2,m1_3)
+anova(m2_2,m2_3)
+anova(m3_2,m3_3)
+anova(m4_2,m4_3)
+anova(m5_2,m5_3)
+anova(m6_2,m6_3)
+anova(m7_2,m7_3)
+anova(m8_2,m8_3)
+anova(m9_2,m9_3)
+anova(m10_2,m10_3)
+anova(m11_2,m11_3)
+```
+

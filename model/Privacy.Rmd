@@ -1,0 +1,193 @@
+---
+title: "multilevel_logistic_model_with_stratification"
+author: "Yixi Li"
+date: "4/21/2019"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data, include=FALSE}
+library(lme4)
+
+dir<-'/Users/Loielaine/Desktop/Good_Good_Study/2018Survey project/data/'
+
+data<-read.csv2(paste0(dir,"interviewee_interviewer_complete.csv"))
+present<-data$present
+#demo_r
+age<-as.numeric(as.character(data$age))
+#age<-scale(age,scale = F)
+gender<-data$gender_n
+data$ismarry<-0
+data[data$marital==2,"ismarry"]<-1
+marital<-data$ismarry
+edu<-data$educ_nc
+#nfamily<-data$nfamilya
+nfamily<-data$nfamily_c
+employ<-data$employment
+muni<-data$muni_c
+
+#demo_iwer
+language_iw<-data$language_iw
+nationality<-data$nationality_iw
+#age_iw<-as.numeric(as.character(data$age_iw))
+#age_iw<-scale(age_iw,scale = F)
+edu_iw<-data$edu_iw
+age_iw<-data$age_iwc
+exp_iw<-data$experience_iw_cate
+iw7a<-data$iw7a_cate
+iw7b<-data$iw7b_cate
+iw7b3<-data$iw7b_cate3
+#iw9a<-data$iw9a_cate
+iw9b<-data$iw9b_cate
+
+#personality
+#hexcao
+hexcao<-data.frame(matrix(nrow=1502,ncol=6))
+hexcao[,1]<-data$humility
+hexcao[,2]<-data$emotionality
+hexcao[,3]<-data$extraversion
+hexcao[,4]<-data$agreeableness
+hexcao[,5]<-data$conscientiousness
+hexcao[,6]<-data$openess  
+hexcao<-apply(hexcao,2,as.numeric) 
+hexcao<-scale(hexcao,scale=F)
+
+#SSI
+ssi<-data.frame(matrix(nrow=1502,ncol=6))
+ssi<-data[,627:632]
+ssi<-apply(ssi,2,as.numeric)
+ssi<-scale(ssi,scale=F)
+
+#iwid
+iwid<-as.character(data$iweraccount)
+
+#weights
+weights<-as.numeric(as.character(data$wgt))/sum(as.numeric(as.character(data$wgt)))*1502
+#weights<-scale(weights,center = F)
+
+strata<-data$strat
+
+modeldata<-data.frame(cbind(present,age,gender,edu,nfamily,employ,muni,marital,language_iw,nationality,age_iw,edu_iw,exp_iw,iw7b,iw7b3,iw9b,
+hexcao,ssi,iwid,weights,strata))
+colnames(modeldata)<-c("present","age","gender","edu","nfamily","employ","muni", "marital", "language_iw","nationality","age_iw","edu_iw","exp_iw","iw7b","iw7b3","iw9b",
+"hexcao1","hexcao2","hexcao3","hexcao4","hexcao5","hexcao6",
+"ssi1","ssi2","ssi3","ssi4","ssi5","ssi6",
+"iwid","weights","strata")
+str(modeldata)
+
+for(i in c(2:28,30)){
+  modeldata[,i]<-as.numeric(as.character(modeldata[,i]))
+}
+
+write.csv2(modeldata,file=paste0(dir,"modeldata.csv"),row.names =F)
+colnames(modeldata)
+
+```
+
+
+### model 1 demo_r
+```{r m1}
+m1<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m1)
+```
+
+### model 2 demo_r, demo_iw, exp_iw
+```{r m2}
+m2<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(age_iw)+factor(edu_iw)+factor(exp_iw)
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m2)
+```
+
+### model 3 demo_r, ssi
+```{r m3}
+m3<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)
+ +ssi[,1]+ssi[,2]+ssi[,3] +ssi[,4]+ssi[,5]+ssi[,6]
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m3)
+```
+
+### model 4 demo_r, hexcao
+```{r m4}
+m4<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)
+ +hexcao[,1]+hexcao[,2]+hexcao[,3] + hexcao[,4]+hexcao[,5]+hexcao[,6]
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m4)
+```
+
+### model 5 demo_r, 7b, 9b
+```{r m5}
+m5<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+factor(iw7a)
+ +factor(iw7b)+factor(iw9b)
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m5)
+```
+
+
+### model 6 demo_r, demo_iw, exp_iw, ssi
+```{r m6}
+m6<-glmer(present ~ age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(age_iw)+factor(edu_iw)+factor(exp_iw)
+ +ssi[,1]+ssi[,2]+ssi[,3] +ssi[,4]+ssi[,5]+ssi[,6]+(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m6)
+```
+
+### model 7 demo_r, demo_iw, exp_iw, hexcao
+```{r m7}
+m7<-glmer(present ~age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(age_iw)+factor(edu_iw)+factor(exp_iw)
+ +hexcao[,1]+hexcao[,2]+hexcao[,3] + hexcao[,4]+hexcao[,5]+hexcao[,6]
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m7)
+```
+
+### model 8 demo_r, demo_iw, exp_iw, ssi, hexcao
+```{r m8}
+m8<-glmer(present ~age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(age_iw)+factor(edu_iw)+factor(exp_iw)
+ +hexcao[,1]+hexcao[,2]+hexcao[,3] + hexcao[,4]+hexcao[,5]+hexcao[,6]
+     +ssi[,1]+ssi[,2]+ssi[,3] +ssi[,4]+ssi[,5]+ssi[,6]
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m8)
+```
+
+### model 9 demo_r, demo_iw, exp_iw, ssi, hexcao, 7b, 9b
+```{r m9}
+m9<-glmer(present ~age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(age_iw)+factor(edu_iw)+factor(exp_iw)
+ +hexcao[,1]+hexcao[,2]+hexcao[,3] + hexcao[,4]+hexcao[,5]+hexcao[,6]
+     +ssi[,1]+ssi[,2]+ssi[,3] +ssi[,4]+ssi[,5]+ssi[,6]+factor(iw7a)
++factor(iw7b)+factor(iw9b)
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m9)
+```
+
+
+### model 10 demo_r, sig from model 9
+```{r}
+m10<-glmer(present ~age+factor(gender)+factor(edu)+factor(nfamily)+factor(employ)+factor(muni)+factor(marital)+
++ factor(language_iw) +factor(nationality)+factor(edu_iw)+factor(exp_iw)
++hexcao[,2]+hexcao[,3] +hexcao[,5]
+     +ssi[,1]+ssi[,2]+ssi[,5]+ssi[,6]
+          +(1 | factor(iwid))+(1|factor(strata)), family = binomial("logit"),weights = weights,control=glmerControl(calc.derivs = F),data=modeldata)
+summary(m10)
+```
+
+
+```{r}
+anova(m1,m2)
+anova(m1,m3)
+anova(m1,m4)
+anova(m1,m5)
+anova(m1,m6)
+anova(m1,m7)
+anova(m1,m8)
+anova(m1,m9)
+anova(m1,m10)
+```
+
